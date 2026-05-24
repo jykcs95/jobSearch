@@ -7,30 +7,31 @@ def main():
     print("=============================================\n")
     
     while True:
-        # Prompt user for input variables
         company = input("Enter Company Name (or type 'exit' to quit): ").strip()
-        if company.lower() == 'exit':
-            print("Exiting application. Goodbye!")
-            break
+        if company.lower() == 'exit': break
             
         job = input("Enter Job Title: ").strip()
+        if job.lower() == 'exit': break
+            
+        location_input = input("Enter Location (Press Enter for default: Chicago): ").strip()
+        target_location = location_input if location_input else "Chicago"
         
         if not company or not job:
             print("[Error] Both company and job title are required. Try again.\n")
             continue
             
-        print(f"\n[Searching] Running deep lookup for {job} at {company}... Please wait.")
+        print(f"\n[Searching] Running deep lookup for {job} at {company} ({target_location})... Please wait.")
         
         try:
-            # Call our separate module file logic
-            report = get_comprehensive_report(company, job)
+            report = get_comprehensive_report(company, job, target_location)
             
-            # Print Formatted Report Layout
             print(f"\n================================================================")
             print(f" MASTER CAREER INTEL REPORT: {report.company_name.upper()} - {report.job_title.upper()}")
             print(f"================================================================\n")
             
             print(f"--- 1. OVERALL EMPLOYEE REVIEW & EXPERIENCE ---")
+            # Render the newly requested evaluation score 
+            print(f"⭐ Company Rating: {report.review_section.company_rating} / 5.0")
             print(f"• WLB Insight: {report.review_section.wlb_rating}")
             print(f"• Career Track: {report.review_section.career_growth}")
             print("\n✔ Pros:")
@@ -39,8 +40,14 @@ def main():
             for con in report.review_section.cons: print(f"  - {con}")
                 
             print(f"\n--- 2. COMPENSATION & REWARDS BREAKDOWN ---")
-            print(f"• Base Salary Structure: {report.salary_section.base_salary_range}")
-            print(f"• Bonus & Equity Tranches: {report.salary_section.bonus_and_equity}")
+            print(f"📍 LOCAL MARKET REGION: {target_location.upper()}")
+            print(f"   • Base Salary: {report.salary_section.location_specifics.base_salary_range}")
+            print(f"   • Bonus & Equity: {report.salary_section.location_specifics.bonus_and_equity}")
+            
+            print(f"\n🇺🇸 NATIONAL MARKET BASES:")
+            print(f"   • Base Salary: {report.salary_section.national_specifics.base_salary_range}")
+            print(f"   • Bonus & Equity: {report.salary_section.national_specifics.bonus_and_equity}")
+            
             print("\n• Core Corporate Perks:")
             for perk in report.salary_section.benefits_highlights: print(f"  * {perk}")
                 

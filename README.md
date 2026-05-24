@@ -19,7 +19,8 @@ Built using **Python**, **Streamlit**, and the structured data capabilities of t
 ## 📁 Repository Directory Structure
 
 ```text
-gemini-app/
+jobSearch/
+├── .gitignore            # Unnecessary files for repository
 ├── .env                  # Private API Key (Git-ignored)
 ├── requirements.txt      # Project Package Dependencies
 ├── gemini_service.py     # Data Schemas & Gemini Client Call

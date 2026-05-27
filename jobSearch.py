@@ -1,5 +1,49 @@
+import html
+import re
 import streamlit as st
 from gemini_service import get_comprehensive_report
+
+# Helper to normalize numeric salary text to dollar currency formatting
+# Example: "Entry-Level (0-2 years): 120000 - 150000" -> "Entry-Level (0-2 years): $120,000 - $150,000"
+# Preserves descriptive text and leaves percent values untouched.
+def format_salary_numbers(raw_text: str) -> str:
+    if not raw_text:
+        return raw_text
+
+    def replace_number(match):
+        text = match.group(0).replace(',', '')
+        if text.endswith('%'):
+            return match.group(0)
+        try:
+            value = int(text)
+        except ValueError:
+            return match.group(0)
+        return f'${value:,}'
+
+    return re.sub(r'(?<![\d$])(\d{4,}(?:,\d{3})*|\d{5,})(?![\d%])', replace_number, raw_text)
+
+# Remove stray markdown and prepare salary text for formatting.
+def clean_salary_text(raw_text: str) -> str:
+    if not raw_text:
+        return ''
+    return raw_text.replace('`', '').replace('*', '').replace('_', '')
+
+
+# Highlight dollar amounts and salary ranges using markdown emphasis
+# This avoids raw HTML injection and ensures Streamlit renders the text cleanly.
+def highlight_salary_numbers(raw_text: str) -> str:
+    if not raw_text:
+        return ''
+    cleaned = re.sub(r'(?i)</?span\b[^>]*>', '', raw_text)
+    cleaned = re.sub(r'(?i)&lt;/?span\b[^&]*&gt;', '', cleaned)
+    cleaned = re.sub(r'<[^>]+>', '', cleaned)
+    escaped = html.escape(cleaned)
+
+    def repl(m):
+        return f'-{m.group(0)}-'
+
+    highlighted = re.sub(r'(?<![\w$])\$?\d{1,3}(?:,\d{3})*(?![\w%])', repl, escaped)
+    return highlighted
 
 # 1. Page Configuration & Styling
 st.set_page_config(page_title="AI Career Intelligence", page_icon="💼", layout="wide")
@@ -52,15 +96,22 @@ if st.sidebar.button("Generate Intelligence Report", type="primary"):
         with st.spinner(f"Conducting deep-web intelligence scan for {job} at {company}..."):
             try:
                 report = get_comprehensive_report(company, job, target_location)
-                st.success(f"Report Generated for {report.company_name}!")
-                
                 st.header(f"🏢 {report.company_name} — {report.job_title}")
                 st.info(f"📍 Salary Geolocation Focus: **{target_location}** vs. **United States National Average**")
                 
-                tab1, tab2, tab3 = st.tabs(["📊 Employee Experience & Reviews", "💰 Compensation & Rewards", "🎯 Interview Pipeline Intercept"])
+                tab1, tab2, tab3, tab4 = st.tabs(["🏢 Company Overview", "📊 Employee Experience & Reviews", "💰 Compensation & Rewards", "🎯 Interview Pipeline Intercept"])
                 
-                # --- TAB 1: REVIEWS ---
+                # --- TAB 1: COMPANY OVERVIEW ---
                 with tab1:
+                    st.subheader("📘 Employer Company Description")
+                    st.write(report.company_section.company_description)
+                    st.write("---")
+                    st.subheader("🌟 Company Values")
+                    for value in report.company_section.company_values:
+                        st.markdown(f"- {value}")
+
+                # --- TAB 2: REVIEWS ---
+                with tab2:
                     col1, col2 = st.columns([1, 2])
                     with col1:
                         st.metric(label="Overall Employee Rating", value=f"⭐ {report.review_section.company_rating} / 5.0")
@@ -77,25 +128,40 @@ if st.sidebar.button("Generate Intelligence Report", type="primary"):
                         st.subheader("🔴 Cultural Cons")
                         for con in report.review_section.cons: st.write(f"❌ {con}")
 
-                # --- TAB 2: SALARY ---
-                with tab2:
+                # --- TAB 3: SALARY ---
+                with tab3:
                     local_col, nat_col = st.columns(2)
+                    local_base = format_salary_numbers(report.salary_section.location_specifics.base_salary_range)
+                    national_base = format_salary_numbers(report.salary_section.national_specifics.base_salary_range)
+                    local_bonus = format_salary_numbers(report.salary_section.location_specifics.bonus_and_equity)
+                    national_bonus = format_salary_numbers(report.salary_section.national_specifics.bonus_and_equity)
+
                     with local_col:
                         st.markdown(f"### 📍 Local Market: {target_location.upper()}")
-                        st.info(f"**Base Pay Scale:**\n{report.salary_section.location_specifics.base_salary_range}")
-                        st.write(f"**Bonus & Stock Distribution:**\n{report.salary_section.location_specifics.bonus_and_equity}")
+                        local_base = clean_salary_text(format_salary_numbers(report.salary_section.location_specifics.base_salary_range))
+                        local_bonus = clean_salary_text(format_salary_numbers(report.salary_section.location_specifics.bonus_and_equity))
+                        st.write("**Base Pay Scale:**")
+                        # highlight local (light green)
+                        st.markdown(highlight_salary_numbers(local_base))
+                        st.write("**Bonus & Stock Distribution:**")
+                        st.markdown(highlight_salary_numbers(local_bonus))
                     with nat_col:
-                        st.markdown("### 🇺🇸 National Market Baseline")
-                        st.warning(f"**Base Pay Scale:**\n{report.salary_section.national_specifics.base_salary_range}")
-                        st.write(f"**Bonus & Stock Distribution:**\n{report.salary_section.national_specifics.bonus_and_equity}")
+                        st.markdown("### 📍 US National Market Baseline")
+                        national_base = clean_salary_text(format_salary_numbers(report.salary_section.national_specifics.base_salary_range))
+                        national_bonus = clean_salary_text(format_salary_numbers(report.salary_section.national_specifics.bonus_and_equity))
+                        st.write("**Base Pay Scale:**")
+                        # highlight national (light blue)
+                        st.markdown(highlight_salary_numbers(national_base))
+                        st.write("**Bonus & Stock Distribution:**")
+                        st.markdown(highlight_salary_numbers(national_bonus))
                     st.write("---")
 
                     st.subheader("🎁 Corporate Perks & Health Benefits")
                     for perk in report.salary_section.benefits_highlights:
                         st.markdown(f"🌟 {perk}")
 
-                # --- TAB 3: INTERVIEWS ---
-                with tab3:
+                # --- TAB 4: INTERVIEWS ---
+                with tab4:
                     st.subheader("🧠 Prep Strategy & Panel Difficulty")
                     st.write(report.interview_section.difficulty_and_tips)
                     st.write("---")

@@ -45,11 +45,16 @@ class DeepInterview(BaseModel):
     detailed_stages: list[InterviewStageDetails] = Field(description="Chronological step-by-step pipeline stages with full structural context.")
     common_questions: list[str] = Field(description="3 specific interview questions asked for this role.")
 
+# Employer overview section
+class CompanyOverview(BaseModel):
+    company_description: str = Field(description="A concise description of the employer, including business focus and culture.")
+    company_values: list[str] = Field(description="Core company values or guiding principles in 3-5 short phrases.")
 
 #Add all the prompts together
 class ComprehensiveJobReport(BaseModel):
     company_name: str
     job_title: str
+    company_section: CompanyOverview
     review_section: DeepReview
     salary_section: DeepSalary
     interview_section: DeepInterview
@@ -65,13 +70,17 @@ def get_comprehensive_report(company: str, job: str, location: str = "Chicago") 
     You are an elite corporate recruiter and career intelligence analyst. 
     Conduct an exhaustive, deep-dive investigation into the '{job}' position at '{company}'.
     
-    Synthesize your knowledge to act as a replacement for three individual deep-web searches:
-    1. A complete Glassdoor/Reddit analysis of employee reviews, cultural benefits, and work-life balance realities.
-    2. A comprehensive salary breakdown contrasting the local '{location}' market numbers against national baselines.
+    Synthesize your knowledge to act as a replacement for four individual deep-web searches:
+    1. A concise employer profile summarizing what the company does, its culture, and how it positions itself in the market.
+    2. A complete Glassdoor/Reddit analysis of employee reviews, cultural benefits, and work-life balance realities.
+    3. A comprehensive salary breakdown contrasting the local '{location}' market numbers against national baselines.
+    Return the base_salary_range field as a descriptive multi-tier pay breakdown, including labels such as entry-level, mid-level, and senior-level when available.
     Provide concrete numbers for both markets so the user can easily observe the geographic cost-of-living adjustments.
-    3. An end-to-end interview prep post covering the exact pipeline structure, test types, and specific real-world screening questions.
+    4. An end-to-end interview prep post covering the exact pipeline structure, test types, and specific real-world screening questions.
     
     CRITICAL INSTRUCTION: Do NOT include any markdown formatting, backticks (`) for code blocks, asterisks, or underscores inside any text fields. Return completely clean, raw plain-text words and numbers.
+    All salary and bonus amounts must include a leading dollar sign and comma separators (for example, "$120,000" or "$15,000 - $40,000").
+    Provide the employer overview as a company_description string and a company_values list.
     
     Provide concrete data, clear numbers, and realistic breakdowns. Do not use generic filler text.
     """

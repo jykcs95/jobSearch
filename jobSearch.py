@@ -40,7 +40,7 @@ def highlight_salary_numbers(raw_text: str) -> str:
     escaped = html.escape(cleaned)
 
     def repl(m):
-        return f'-{m.group(0)}-'
+        return f'=={m.group(0)}**'
 
     highlighted = re.sub(r'(?<![\w$])\$?\d{1,3}(?:,\d{3})*(?![\w%])', repl, escaped)
     return highlighted
